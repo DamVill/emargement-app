@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Emargement</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      background: #f5f5f5;
+      text-align: center;
+    }
+    #reader {
+      width: 300px;
+      margin: 1rem auto;
+      display: none;
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.6rem 1rem;
+      margin: 1rem;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .info {
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+    .status {
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>Scanner QR - Emargement</h2>
+
+  <button onclick="startScanner()">📷 Démarrer le scan</button>
+  <div id="reader"></div>
+
+  <div class="info" id="info"></div>
+  <button id="submitBtn" style="display:none;" onclick="submitData()">✅ Valider présence</button>
+
+  <div class="status" id="status">En attente…</div>
+
+  <audio id="beep" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3" preload="auto"></audio>
+
+  <script>
+    let qrScanner;
+    let lastData = null;
+    
+    const endpoint = "https://script.google.com/macros/s/AKfycbzG1fN4Vg080A60EYZ4SI_w1vppR_0wvY7CpBMj5MbdpsOUC9-TozjdPs6ZVwCmhKww/exec"; // <-- Remplace par ton URL
+
+    function startScanner() {
+      document.getElementById("reader").style.display = "block";
+      document.getElementById("status").textContent = "Scanner actif...";
+
+      qrScanner = new Html5Qrcode("reader");
+      qrScanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          try {
+            // Corrige le format type {nom:XXX,prenom:YYY,societe:ZZZ}
+            const fixedText = decodedText
+              .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // ajoute guillemets sur clés
+              .replace(/:\s*([^",}{]+)(?=[,}])/g, ':"$1"');        // ajoute guillemets sur valeurs
+
+            lastData = JSON.parse(fixedText);
+
+            document.getElementById("info").innerHTML = `
+              <strong>Nom :</strong> ${lastData.nom}<br>
+              <strong>Prénom :</strong> ${lastData.prenom}<br>
+              <strong>Société :</strong> ${lastData.societe}
+            `;
+            document.getElementById("submitBtn").style.display = "inline-block";
+            qrScanner.stop();
+          } catch (e) {
+            document.getElementById("status").textContent = "QR code invalide";
+          }
+        }
+      );
+    }
+
+    function submitData() {
+  if (!lastData) return;
+  document.getElementById("status").textContent = "Envoi en cours...";
+
+  fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(lastData),
+  })
+    .then(res => res.text())
+    .then(txt => {
+      document.getElementById("status").textContent = "✅ " + txt;
+      alert("Réponse du serveur : " + txt);  // 🔔 Ajoute cette ligne !
+      document.getElementById("submitBtn").style.display = "none";
+      document.getElementById("info").innerHTML = "";
+      document.getElementById("beep").play();
+    })
+    .catch((err) => {
+      document.getElementById("status").textContent = "❌ Erreur d'envoi";
+      alert("Erreur d'envoi : " + err); // 🔔 Et celle-ci aussi !
+    });
+}
+
+  </script>
+</body>
+</html>
