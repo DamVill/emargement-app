@@ -91,13 +91,17 @@
   if (!lastData) return;
   document.getElementById("status").textContent = "Envoi en cours...";
 
-  fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(lastData),
-  })
+  const proxyUrl = "https://cors-anywhere.herokuapp.com/";
+const realEndpoint = "https://script.google.com/macros/s/TON_ID/exec"; // Remplace TON_ID
+
+fetch(proxyUrl + realEndpoint, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(lastData),
+})
+
     .then(res => res.text())
     .then(txt => {
       document.getElementById("status").textContent = "✅ " + txt;
